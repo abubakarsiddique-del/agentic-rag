@@ -33,17 +33,17 @@ export GROQ_API_KEY="<your Groq API key>"
 Start FastAPI from the repository root:
 
 ```bash
-./.venv/bin/python -m uvicorn backend.app:app --reload
+FRONTEND_ORIGIN=http://localhost:5191 ./.venv/bin/python -m uvicorn backend.app:app --reload --port 18005
 ```
 
 In another terminal, start Vite:
 
 ```bash
 cd frontend
-npm run dev
+VITE_API_PROXY_TARGET=http://localhost:18005 npm run dev -- --port 5191
 ```
 
-Open <http://localhost:5191/>. Use `localhost` consistently for local development; do not switch to `127.0.0.1`, because Google treats those hosts as different redirect URIs. Vite proxies `/api` requests to `http://localhost:18005`; leave `VITE_API_BASE_URL` unset for this local setup. For Google OAuth, set `GOOGLE_REDIRECT_URI` to the exact URI registered in Google Cloud Console, for example `http://localhost:5173/api/auth/google/callback`.
+Open <http://localhost:5191/>. The backend health endpoint is <http://localhost:18005/api/health>. Use `localhost` consistently for local development; do not switch to `127.0.0.1`, because Google treats those hosts as different redirect URIs. Vite proxies `/api` requests to `http://localhost:18005`; leave `VITE_API_BASE_URL` unset for this local setup. For Google OAuth, set `GOOGLE_REDIRECT_URI` to the exact URI registered in Google Cloud Console, for example `http://localhost:5191/api/auth/google/callback`.
 
 ### Run Streamlit
 
@@ -145,7 +145,7 @@ Question JSON requires `question`. Optional settings: `answer_mode` (`agentic` o
 | `GROQ_API_KEY` | Required for Groq chat, Whisper, and PlayAI calls. |
 | `GROQ_MODEL` | Chat model; default `openai/gpt-oss-120b`. |
 | `EMBEDDING_MODEL` | Embedding model; default `sentence-transformers/all-MiniLM-L6-v2`. |
-| `FRONTEND_ORIGIN` | Comma-separated exact CORS origins; default `http://localhost:5173`. Wildcard is rejected. |
+| `FRONTEND_ORIGIN` | Comma-separated exact CORS origins; default `http://localhost:5173`. Set to `http://localhost:5191` for the local ports above. Wildcard is rejected. |
 | `VITE_API_BASE_URL` | Optional API origin for direct cross-origin use; unset uses the Vite `/api` proxy. |
 | `APP_ENV` | Defaults to `development`; `production` forces Secure session cookies. |
 | `RAG_COOKIE_SECURE`, `RAG_COOKIE_SAMESITE` | Cookie overrides; defaults `0` and `lax`. `SameSite=None` requires Secure. |

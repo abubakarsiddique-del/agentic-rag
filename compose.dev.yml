@@ -1,0 +1,48 @@
+services:
+  backend:
+    environment:
+      APP_ENV: development
+      RAG_COOKIE_SECURE: "0"
+      FRONTEND_ORIGIN: "http://localhost:${FRONTEND_PORT:-5173}"
+    command:
+      - uvicorn
+      - backend.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+      - --reload-dir
+      - /app
+    volumes:
+      - ./backend:/app/backend:ro
+      - ./chitchat:/app/chitchat:ro
+      - ./guardrails:/app/guardrails:ro
+      - ./persistence:/app/persistence:ro
+      - ./agentic_rag.py:/app/agentic_rag.py:ro
+      - ./app_helpers.py:/app/app_helpers.py:ro
+      - ./config.py:/app/config.py:ro
+      - ./ingest.py:/app/ingest.py:ro
+      - ./map_reduce.py:/app/map_reduce.py:ro
+      - ./observability.py:/app/observability.py:ro
+      - ./reranking.py:/app/reranking.py:ro
+
+  frontend:
+    build:
+      target: build
+    command:
+      - npm
+      - run
+      - dev
+      - --
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5173"
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+    volumes:
+      - ./frontend:/src
+      - /src/node_modules
+    ports: !override
+      - "${FRONTEND_PORT:-5173}:5173"

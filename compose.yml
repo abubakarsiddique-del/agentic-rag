@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      RAG_COOKIE_SECURE: "1"
+      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-http://localhost:5173}"
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - rag_history:/var/lib/agentic-rag/db
+      - chroma_store:/var/lib/agentic-rag/chroma
+      - hf_cache:/home/app/.cache/huggingface
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    restart: unless-stopped
+
+volumes:
+  rag_history:
+  chroma_store:
+  hf_cache:
