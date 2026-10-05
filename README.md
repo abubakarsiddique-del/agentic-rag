@@ -43,7 +43,7 @@ cd frontend
 npm run dev
 ```
 
-Open <http://localhost:5173/>. Use `localhost` consistently for local development; do not switch to `127.0.0.1`, because Google treats those hosts as different redirect URIs. Vite proxies `/api` requests to `http://localhost:8000`; leave `VITE_API_BASE_URL` unset for this local setup. For Google OAuth, set `GOOGLE_REDIRECT_URI` to the exact URI registered in Google Cloud Console, for example `http://localhost:5173/api/auth/google/callback`.
+Open <http://localhost:5191/>. Use `localhost` consistently for local development; do not switch to `127.0.0.1`, because Google treats those hosts as different redirect URIs. Vite proxies `/api` requests to `http://localhost:18005`; leave `VITE_API_BASE_URL` unset for this local setup. For Google OAuth, set `GOOGLE_REDIRECT_URI` to the exact URI registered in Google Cloud Console, for example `http://localhost:5173/api/auth/google/callback`.
 
 ### Run Streamlit
 
