@@ -8,9 +8,9 @@ services:
     environment:
       APP_ENV: production
       RAG_COOKIE_SECURE: "1"
-      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-http://localhost:5173}"
+      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-http://localhost:5191}"
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${BACKEND_PORT:-18005}:8000"
     volumes:
       - rag_history:/var/lib/agentic-rag/db
       - chroma_store:/var/lib/agentic-rag/chroma
@@ -25,7 +25,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "${FRONTEND_PORT:-5173}:80"
+      - "${FRONTEND_PORT:-5191}:80"
     restart: unless-stopped
 
 volumes:

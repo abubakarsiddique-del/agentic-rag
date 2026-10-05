@@ -45,4 +45,4 @@ services:
       - ./frontend:/src
       - /src/node_modules
     ports: !override
-      - "${FRONTEND_PORT:-5173}:5173"
+      - "${FRONTEND_PORT:-5191}:5173"
