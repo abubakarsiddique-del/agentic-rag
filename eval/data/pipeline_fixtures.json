@@ -1,0 +1,65 @@
+{
+  "description": "Deterministic offline trace snapshots for exercising Phase 1 metrics; not production-model measurements.",
+  "cases": [
+    {
+      "id": "local-supported",
+      "question": "What is the return window?",
+      "gold_passages": ["returns:p2"],
+      "expected_route": "local",
+      "expected_sufficiency": true,
+      "trace": [
+        {"step": "route", "route": "retrieve", "scope": "local"},
+        {"step": "retrieve", "query": "What is the return window?", "passage_ids": ["returns:p2", "returns:p1"]},
+        {"step": "rerank", "passage_ids": ["returns:p2", "returns:p1"]},
+        {"step": "grade", "sufficient": true},
+        {"step": "generate"}
+      ]
+    },
+    {
+      "id": "broad-supported",
+      "question": "Summarize the policy across sections.",
+      "gold_passages": ["policy:p3"],
+      "expected_route": "broad",
+      "expected_sufficiency": true,
+      "trace": [
+        {"step": "route", "route": "retrieve", "scope": "global"},
+        {"step": "retrieve", "query": "Summarize the policy across sections.", "passage_ids": ["policy:p1", "policy:p3"]},
+        {"step": "rerank", "passage_ids": ["policy:p3", "policy:p1"]},
+        {"step": "grade", "sufficient": true},
+        {"step": "generate"}
+      ]
+    },
+    {
+      "id": "unsupported-abstains",
+      "question": "Which planet is farthest from the Sun?",
+      "gold_passages": ["unrelated:p1"],
+      "expected_route": "local",
+      "expected_sufficiency": false,
+      "trace": [
+        {"step": "route", "route": "retrieve", "scope": "local"},
+        {"step": "retrieve", "query": "Which planet is farthest from the Sun?", "passage_ids": ["returns:p1", "returns:p2"]},
+        {"step": "rerank", "passage_ids": ["returns:p2", "returns:p1"]},
+        {"step": "grade", "sufficient": false},
+        {"step": "abstain"}
+      ]
+    },
+    {
+      "id": "rewrite-finds-support",
+      "question": "Who can approve a refund?",
+      "gold_passages": ["returns:p7"],
+      "expected_route": "local",
+      "expected_sufficiency": true,
+      "trace": [
+        {"step": "route", "route": "retrieve", "scope": "local"},
+        {"step": "retrieve", "query": "Who can approve a refund?", "passage_ids": ["returns:p1", "returns:p4"]},
+        {"step": "rerank", "passage_ids": ["returns:p4", "returns:p1"]},
+        {"step": "grade", "sufficient": false},
+        {"step": "rewrite", "previous_query": "Who can approve a refund?", "query": "refund approval authority"},
+        {"step": "retrieve", "query": "refund approval authority", "passage_ids": ["returns:p7", "returns:p4"]},
+        {"step": "rerank", "passage_ids": ["returns:p7", "returns:p4"]},
+        {"step": "grade", "sufficient": true},
+        {"step": "generate"}
+      ]
+    }
+  ]
+}

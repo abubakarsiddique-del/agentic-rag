@@ -1,0 +1,4 @@
+{
+  "description": "Local calibration case schema. Use 20-30 reviewed cases; do not commit private question or source data.",
+  "cases": []
+}

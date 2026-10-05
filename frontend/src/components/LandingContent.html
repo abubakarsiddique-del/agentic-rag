@@ -1,0 +1,141 @@
+<a class="skip" href="#main">Skip to content</a>
+<div class="ambient" aria-hidden="true"></div>
+
+<nav class="nav" id="nav" aria-label="Primary navigation">
+  <div class="container nav-inner">
+    <a class="brand" href="/" aria-label="Agentic RAG home">
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l5 5v13H6z"/><path d="M9 12h6M9 16h6"/></svg></span>
+      Agentic RAG
+    </a>
+    <div class="nav-links" id="desktopLinks">
+      <a href="#product">Product</a><a href="#features">Features</a><a href="#how">How it works</a><a href="#security">Security</a>
+    </div>
+    <div class="nav-actions">
+      <a href="#get-started" class="btn btn-primary">Get started <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8h9M8 4l4 4-4 4"/></svg></a>
+      <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="mobilePanel" aria-label="Open menu">
+        <svg id="menuIcon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-panel" id="mobilePanel">
+    <a href="#product">Product</a><a href="#features">Features</a><a href="#how">How it works</a><a href="#security">Security</a>
+  </div>
+</nav>
+
+<main id="main">
+<section class="hero">
+  <div class="container">
+    <span class="eyebrow"><i></i> AI that shows its work</span>
+    <h1>Ask your documents anything.<br><span class="gradient">See how the answer was found.</span></h1>
+    <p class="hero-lede">Agentic RAG retrieves, re-ranks, and grades passages before it writes a word — then shows the exact source behind every claim.</p>
+    <div class="hero-ctas">
+      <a href="/login" class="btn btn-primary">Start free <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8h9M8 4l4 4-4 4"/></svg></a>
+      <a href="#product" class="btn btn-ghost">See it reason <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m6 3 5 5-5 5"/></svg></a>
+    </div>
+    <div class="hero-proof" aria-label="Product qualities">
+      <span><b>●</b> grounded answers</span><span><b>●</b> source-level citations</span><span><b>●</b> self-checking retrieval</span>
+    </div>
+  </div>
+</section>
+
+<section class="showcase container" id="product" aria-labelledby="flow-title">
+  <div class="product-shell reveal">
+    <div class="window-bar" aria-hidden="true">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="window-title">agentic-rag / reasoning-pipeline</span>
+    </div>
+    <div class="flow">
+      <div class="flow-label" id="flow-title">What happens between your question and its answer</div>
+      <div class="flow-track">
+        <div class="flow-line" aria-hidden="true"></div>
+        <div class="node"><div class="node-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 5h14v11H8l-3 3z"/></svg></div><span class="node-name">Ask</span><span class="node-meta">question</span></div>
+        <div class="node"><div class="node-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M7 4v6M17 14v6M4 17h16"/></svg></div><span class="node-name">Route</span><span class="node-meta">strategy</span></div>
+        <div class="node"><div class="node-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.8" cy="10.8" r="5.8"/><path d="m15 15 4.5 4.5"/></svg></div><span class="node-name">Retrieve</span><span class="node-meta">passages</span></div>
+        <div class="node"><div class="node-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m5 7 14 0M5 12h10M5 17h7"/></svg></div><span class="node-name">Re-rank</span><span class="node-meta">relevance</span></div>
+        <div class="node"><div class="node-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m5 12 4 4 10-10"/><circle cx="12" cy="12" r="9"/></svg></div><span class="node-name">Grade</span><span class="node-meta">evidence</span></div>
+        <div class="node"><div class="node-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 19V5h14v10H9zM9 19h10"/></svg></div><span class="node-name">Generate</span><span class="node-meta">answer</span></div>
+        <div class="node"><div class="node-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m5 12 4 4 10-10"/></svg></div><span class="node-name">Answer</span><span class="node-meta">cited</span></div>
+      </div>
+      <div class="loop">↺ &nbsp; rewrite the query and retrieve again if the evidence falls short</div>
+      <p class="showcase-caption">The agent doesn't stop at the first plausible passage. It can revise its search, inspect evidence, and only then produce the answer.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section features" id="features">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="kicker">Core capabilities</span>
+      <h2>Everything it does, in plain terms.</h2>
+      <p>No black box. Each step below is a real part of the pipeline, not marketing language for a single model call.</p>
+    </div>
+    <div class="feature-list">
+      <article class="feature reveal"><span class="feature-num">01</span><div><h3>Grounded citations</h3><p>Every claim traces back to the exact page it came from. Nothing invented, nothing pulled from outside your documents.</p></div><span class="feature-tag">SOURCE → CLAIM</span></article>
+      <article class="feature reveal" data-delay="1"><span class="feature-num">02</span><div><h3>Adaptive re-ranking</h3><p>Passages are re-ranked and re-confirmed before they reach the model, so the best match wins — not just the first close one.</p></div><span class="feature-tag">RELEVANCE → EVIDENCE</span></article>
+      <article class="feature reveal" data-delay="2"><span class="feature-num">03</span><div><h3>Narrow or broad questions</h3><p>Ask something specific, or ask it to read and summarize an entire document. The agent adapts its own strategy.</p></div><span class="feature-tag">LOOKUP → SUMMARY</span></article>
+      <article class="feature reveal" data-delay="1"><span class="feature-num">04</span><div><h3>Memory across sessions</h3><p>Follow-up questions carry context from past conversations, scoped privately to each person.</p></div><span class="feature-tag">CONTEXT → CONTINUITY</span></article>
+      <article class="feature reveal" data-delay="2"><span class="feature-num">05</span><div><h3>Guardrails by default</h3><p>Prompt-injection defense, groundedness checks, and strict abstention keep answers safe and accurate.</p></div><span class="feature-tag">DEFENSE → CONTROL</span></article>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="kicker">The workflow</span>
+      <h2>Three steps. One verification loop.</h2>
+      <p>The same process runs behind a quick lookup and a full-document summary.</p>
+    </div>
+    <div class="how-grid">
+      <article class="step-card reveal"><span class="step-index">01 — ASK</span><svg class="step-arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h13M13 6l6 6-6 6"/></svg><h3>Upload and ask</h3><p>Add your documents and ask a question the way you'd ask a colleague.</p></article>
+      <article class="step-card reveal" data-delay="1"><span class="step-index">02 — REASON</span><svg class="step-arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h13M13 6l6 6-6 6"/></svg><h3>The agent works</h3><p>It retrieves, re-ranks, and grades passages — rewriting its own search if the first pass comes up short.</p></article>
+      <article class="step-card reveal" data-delay="2"><span class="step-index">03 — ANSWER</span><svg class="step-arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h13M13 6l6 6-6 6"/></svg><h3>You get proof</h3><p>A grounded answer with inline citations back to the exact source page.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="security">
+  <div class="container">
+    <div class="security-wrap reveal">
+      <div class="security-top">
+        <span class="kicker">Trust &amp; control</span>
+        <h2>Security isn't a feature we bolted on.</h2>
+        <p>Every account is isolated, every session is protected, and your documents stay on infrastructure you control.</p>
+      </div>
+      <div class="security-grid">
+        <article class="security-item"><div class="security-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><h3>Per-user data isolation</h3><p>Data boundaries are scoped to each user.</p></article>
+        <article class="security-item"><div class="security-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l7 4v5c0 5-3.4 7.4-7 9-3.6-1.6-7-4-7-9V7z"/></svg></div><h3>Encrypted sessions</h3><p>Protected session handling from request to response.</p></article>
+        <article class="security-item"><div class="security-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div><h3>CSRF-protected by default</h3><p>Built with common web security defenses in mind.</p></article>
+        <article class="security-item"><div class="security-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg></div><h3>Runs on your own infrastructure</h3><p>Keep deployment and infrastructure under your control.</p></article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section cta" id="get-started">
+  <div class="container">
+    <div class="cta-card reveal">
+      <span class="kicker">Ready when you are</span>
+      <h2>Stop guessing what your documents say.</h2>
+      <p>Upload a file and ask your first question in under a minute.</p>
+      <a href="/login" class="btn btn-primary">Start free <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8h9M8 4l4 4-4 4"/></svg></a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-top">
+      <div>
+        <a class="brand" href="/"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l5 5v13H6z"/><path d="M9 12h6M9 16h6"/></svg></span>Agentic RAG</a>
+        <p class="footer-desc">Document answers you can verify — grounded, cited, and re-checked before they reach you.</p>
+      </div>
+      <div class="footer-cols">
+        <div class="footer-col"><h3>Product</h3><a href="#features">Features</a><a href="#how">How it works</a><a href="#security">Security</a></div>
+        <div class="footer-col"><h3>Company</h3><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom"><span>© 2026 Agentic RAG. All rights reserved.</span><span class="mono">BUILT FOR VERIFIABLE AI</span></div>
+  </div>
+</footer>

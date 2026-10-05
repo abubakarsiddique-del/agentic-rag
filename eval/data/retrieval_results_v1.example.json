@@ -1,0 +1,142 @@
+{
+  "description": "Hand-authored ranked candidates for validating the offline metric CLI only; not captured from a live RAG run.",
+  "results": [
+    {
+      "case_id": "pto-request-window",
+      "vector_candidates": [
+        {"passage_id": "unstable-old-chunk-17", "filename": "employee_handbook.test.txt", "page": 2, "text": "Employees may roll over up to five unused paid time off days."},
+        {"passage_id": "unstable-old-chunk-3", "filename": "employee_handbook.test.txt", "page": 1, "text": "Submit paid time off requests at least five business days before the first day off."}
+      ],
+      "post_rerank": [
+        {"passage_id": "new-split-chunk-901", "filename": "employee_handbook.test.txt", "page": 1, "text": "Requests should be submitted at least five business days before the first day off."},
+        {"passage_id": "new-split-chunk-902", "filename": "employee_handbook.test.txt", "page": 2, "text": "Unused paid time off days may roll over."}
+      ]
+    },
+    {
+      "case_id": "pto-rollover-limit",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "employee_handbook.test.txt", "page": 1, "text": "Managers respond within two business days."},
+        {"passage_id": "v-2", "filename": "employee_handbook.test.txt", "page": 2, "text": "Employees may roll over up to five unused paid time off days."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "employee_handbook.test.txt", "page": 2, "text": "Employees may roll over up to five unused paid time off days."},
+        {"passage_id": "r-2", "filename": "employee_handbook.test.txt", "page": 1, "text": "Managers respond within two business days."}
+      ]
+    },
+    {
+      "case_id": "wellness-stipend-details",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "employee_handbook.test.txt", "page": 1, "text": "Submit paid time off requests at least five business days before the first day off."},
+        {"passage_id": "v-2", "filename": "employee_handbook.test.txt", "page": 3, "text": "Full-time employees receive a $50 monthly wellness stipend. Submit receipts to payroll by the fifth calendar day of the next month."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "employee_handbook.test.txt", "page": 3, "text": "Full-time employees receive a $50 monthly wellness stipend."},
+        {"passage_id": "r-2", "filename": "employee_handbook.test.txt", "page": 3, "text": "Submit receipts to payroll by the fifth calendar day of the next month."}
+      ]
+    },
+    {
+      "case_id": "hotel-cap-and-exception",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "travel_policy.test.txt", "page": 1, "text": "Standard bookings must use economy class."},
+        {"passage_id": "v-2", "filename": "travel_policy.test.txt", "page": 2, "text": "The standard hotel limit is $220 per night before taxes. A higher rate requires written approval from the department director before booking."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "travel_policy.test.txt", "page": 2, "text": "The standard hotel limit is $220 per night before taxes."},
+        {"passage_id": "r-2", "filename": "travel_policy.test.txt", "page": 2, "text": "A higher rate requires written approval from the department director before booking."}
+      ]
+    },
+    {
+      "case_id": "expense-report-requirements",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "travel_policy.test.txt", "page": 3, "text": "Alcohol is not reimbursable."},
+        {"passage_id": "v-2", "filename": "travel_policy.test.txt", "page": 4, "text": "Submit an itemized expense report within ten business days after returning. Attach receipts for individual expenses over $25."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "travel_policy.test.txt", "page": 4, "text": "Submit an itemized expense report within ten business days after returning."},
+        {"passage_id": "r-2", "filename": "travel_policy.test.txt", "page": 4, "text": "Attach receipts for individual expenses over $25."}
+      ]
+    },
+    {
+      "case_id": "meal-and-hotel-comparison",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "travel_policy.test.txt", "page": 2, "text": "The standard hotel limit is $220 per night before taxes."},
+        {"passage_id": "v-2", "filename": "travel_policy.test.txt", "page": 1, "text": "Book domestic travel at least fourteen calendar days before departure."},
+        {"passage_id": "v-3", "filename": "travel_policy.test.txt", "page": 3, "text": "Employees traveling overnight may claim a meal allowance of up to $65 per travel day."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "travel_policy.test.txt", "page": 3, "text": "Employees traveling overnight may claim a meal allowance of up to $65 per travel day."},
+        {"passage_id": "r-2", "filename": "travel_policy.test.txt", "page": 2, "text": "The standard hotel limit is $220 per night before taxes."}
+      ]
+    },
+    {
+      "case_id": "security-policy-overview",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "security_faq.test.txt", "page": 3, "text": "Passwords must be at least fourteen characters. Do not reuse any of your previous ten passwords."},
+        {"passage_id": "v-2", "filename": "security_faq.test.txt", "page": 1, "text": "Multi-factor authentication is required for every VPN login."},
+        {"passage_id": "v-3", "filename": "security_faq.test.txt", "page": 2, "text": "Report a lost company device to IT within one hour."},
+        {"passage_id": "v-4", "filename": "security_faq.test.txt", "page": 4, "text": "Report suspected phishing to the Security team within thirty minutes."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "security_faq.test.txt", "page": 1, "text": "Multi-factor authentication is required for every VPN login."},
+        {"passage_id": "r-2", "filename": "security_faq.test.txt", "page": 2, "text": "Report a lost company device to IT within one hour."},
+        {"passage_id": "r-3", "filename": "security_faq.test.txt", "page": 3, "text": "Passwords must be at least fourteen characters."},
+        {"passage_id": "r-4", "filename": "security_faq.test.txt", "page": 4, "text": "Report suspected phishing to the Security team within thirty minutes."}
+      ]
+    },
+    {
+      "case_id": "travel-policy-overview",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "travel_policy.test.txt", "page": 1, "text": "Book domestic travel at least fourteen calendar days before departure."},
+        {"passage_id": "v-2", "filename": "travel_policy.test.txt", "page": 2, "text": "The standard hotel limit is $220 per night before taxes."},
+        {"passage_id": "v-3", "filename": "travel_policy.test.txt", "page": 3, "text": "Employees traveling overnight may claim a meal allowance of up to $65 per travel day."},
+        {"passage_id": "v-4", "filename": "travel_policy.test.txt", "page": 4, "text": "Submit an itemized expense report within ten business days after returning."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "travel_policy.test.txt", "page": 4, "text": "Submit an itemized expense report within ten business days after returning."},
+        {"passage_id": "r-2", "filename": "travel_policy.test.txt", "page": 3, "text": "Employees traveling overnight may claim a meal allowance of up to $65 per travel day."},
+        {"passage_id": "r-3", "filename": "travel_policy.test.txt", "page": 2, "text": "The standard hotel limit is $220 per night before taxes."},
+        {"passage_id": "r-4", "filename": "travel_policy.test.txt", "page": 1, "text": "Book domestic travel at least fourteen calendar days before departure."}
+      ]
+    },
+    {
+      "case_id": "pto-expiry-follow-up",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "employee_handbook.test.txt", "page": 2, "text": "Employees may roll over up to five unused paid time off days."},
+        {"passage_id": "v-2", "filename": "employee_handbook.test.txt", "page": 2, "text": "Rolled days expire on March 31 of the following year."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "employee_handbook.test.txt", "page": 2, "text": "Rolled days expire on March 31 of the following year."},
+        {"passage_id": "r-2", "filename": "employee_handbook.test.txt", "page": 2, "text": "Employees may roll over up to five unused paid time off days."}
+      ]
+    },
+    {
+      "case_id": "lost-device-response",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "security_faq.test.txt", "page": 1, "text": "Multi-factor authentication is required for every VPN login."},
+        {"passage_id": "v-2", "filename": "security_faq.test.txt", "page": 2, "text": "Report a lost company device to IT within one hour."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "security_faq.test.txt", "page": 2, "text": "Report a lost company device to IT within one hour."},
+        {"passage_id": "r-2", "filename": "security_faq.test.txt", "page": 1, "text": "Multi-factor authentication is required for every VPN login."}
+      ]
+    },
+    {
+      "case_id": "unanswerable-cafeteria-menu",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "employee_handbook.test.txt", "page": 1, "text": "Managers respond within two business days."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "employee_handbook.test.txt", "page": 1, "text": "Managers respond within two business days."}
+      ]
+    },
+    {
+      "case_id": "unanswerable-mars",
+      "vector_candidates": [
+        {"passage_id": "v-1", "filename": "travel_policy.test.txt", "page": 1, "text": "Standard bookings must use economy class."}
+      ],
+      "post_rerank": [
+        {"passage_id": "r-1", "filename": "travel_policy.test.txt", "page": 1, "text": "Standard bookings must use economy class."}
+      ]
+    }
+  ]
+}

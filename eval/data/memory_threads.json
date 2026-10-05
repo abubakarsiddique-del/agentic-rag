@@ -1,0 +1,65 @@
+{
+  "description": "Synthetic multi-turn fixtures. Evidence IDs are explicit so leakage checks are deterministic and do not call an LLM.",
+  "threads": [
+    {
+      "id": "pto-expiry-followup",
+      "history": [
+        {"role": "user", "content": "How many unused PTO days roll over?"},
+        {"role": "assistant", "content": "Up to five days roll over."}
+      ],
+      "follow_up": "When do they expire?",
+      "expected_standalone_question": "When do unused PTO days expire?",
+      "memory_hints": [{"id": "hint:pto-turn", "text": "Prior discussion mentioned PTO rollover."}],
+      "memory_on": {
+        "resolved_question": "When do unused PTO days expire?",
+        "retrieved_passage_ids": ["handbook:p2"],
+        "claims": [{"claim": "Rolled-over PTO expires on March 31.", "evidence_ids": ["handbook:p2"], "citation_ids": ["handbook:p2"]}]
+      },
+      "memory_off": {
+        "resolved_question": "When do they expire?",
+        "retrieved_passage_ids": ["unrelated:p1"],
+        "claims": []
+      }
+    },
+    {
+      "id": "hotel-tax-followup",
+      "history": [
+        {"role": "user", "content": "What is the hotel rate cap?"},
+        {"role": "assistant", "content": "The standard limit is $220 before taxes."}
+      ],
+      "follow_up": "Does that include tax?",
+      "expected_standalone_question": "Does the $220 standard hotel limit include taxes?",
+      "memory_hints": [{"id": "hint:hotel-turn", "text": "Prior discussion mentioned the standard hotel limit."}],
+      "memory_on": {
+        "resolved_question": "Does the $220 standard hotel limit include taxes?",
+        "retrieved_passage_ids": ["travel:p2"],
+        "claims": [{"claim": "The $220 hotel limit is before taxes.", "evidence_ids": ["travel:p2"], "citation_ids": ["travel:p2"]}]
+      },
+      "memory_off": {
+        "resolved_question": "Does that include tax?",
+        "retrieved_passage_ids": ["unrelated:p2"],
+        "claims": []
+      }
+    },
+    {
+      "id": "lost-device-deadline-followup",
+      "history": [
+        {"role": "user", "content": "I lost my company laptop."},
+        {"role": "assistant", "content": "Report a lost device to IT."}
+      ],
+      "follow_up": "How fast do I have to tell them?",
+      "expected_standalone_question": "How soon must IT be notified after a company device is lost?",
+      "memory_hints": [{"id": "hint:device-turn", "text": "Prior discussion concerned a lost company device."}],
+      "memory_on": {
+        "resolved_question": "How soon must IT be notified after a company device is lost?",
+        "retrieved_passage_ids": ["security:p2"],
+        "claims": [{"claim": "IT must be notified within one hour.", "evidence_ids": ["security:p2"], "citation_ids": ["security:p2"]}]
+      },
+      "memory_off": {
+        "resolved_question": "How fast do I have to tell them?",
+        "retrieved_passage_ids": ["unrelated:p3"],
+        "claims": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+# Python cache / environment
+__pycache__/
+.venv/
+.pytest_cache/
+*.py[cod]
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+
+# Local generated data
+.DS_Store
+.env
+.env.*
+!.env.example
+.chroma_store/
+.chroma_store.backup.*
+.rag_history.db*
+conversations.db*
+phase7_check.db*
+eval/data/*.local.json
+eval/data/*.db
+eval/reports/
+
+# Local editor/assistant tooling
+.agents/
+.claude/
+
+
+
+
+# Secrets — never commit real values
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+node_modules/
+
+# Runtime / generated state — regenerated on ingestion, not source of truth
+.rag_history.db
+*.db
+*.sqlite3
+.chroma_store/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Review before committing anything here — confirm no confidential or
+# client-provided documents are checked in as test fixtures.
+# uploads/

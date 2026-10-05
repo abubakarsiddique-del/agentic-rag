@@ -1,0 +1,22 @@
+{
+  "baseline": {
+    "runs": 5,
+    "k": 5,
+    "top_k": 4,
+    "rerank_enabled": false,
+    "rerank_candidates": 20,
+    "rerank_top_n": 5,
+    "max_retries": 2,
+    "map_reduce_mode": "auto"
+  },
+  "candidate": {
+    "runs": 5,
+    "k": 5,
+    "top_k": 4,
+    "rerank_enabled": true,
+    "rerank_candidates": 20,
+    "rerank_top_n": 5,
+    "max_retries": 2,
+    "map_reduce_mode": "auto"
+  }
+}

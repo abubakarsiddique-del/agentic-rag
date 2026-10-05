@@ -1,0 +1,89 @@
+{
+  "description": "Self-contained synthetic test-document regression set. These cases validate the evaluator, not production model quality.",
+  "cases": [
+    {
+      "id": "handbook-pto-request",
+      "question": "How early should I request paid time off?",
+      "sources": [{"passage_id": "handbook:p1", "filename": "employee_handbook.test.txt", "page": 1, "content": "Submit paid time off requests at least five business days before the first day off. Managers respond within two business days."}],
+      "expected_answer": "Submit the request at least five business days in advance. Managers respond within two business days.",
+      "expected_citations": ["handbook:p1"]
+    },
+    {
+      "id": "handbook-pto-rollover",
+      "question": "How many unused paid time off days carry over?",
+      "sources": [{"passage_id": "handbook:p2", "filename": "employee_handbook.test.txt", "page": 2, "content": "Employees may roll over up to five unused paid time off days. Rolled days expire on March 31 of the following year."}],
+      "expected_answer": "Up to five unused days roll over, and they expire on March 31 of the following year.",
+      "expected_citations": ["handbook:p2"]
+    },
+    {
+      "id": "handbook-wellness-stipend",
+      "question": "What is the monthly wellness stipend and when are receipts due?",
+      "sources": [{"passage_id": "handbook:p3", "filename": "employee_handbook.test.txt", "page": 3, "content": "Full-time employees receive a $50 monthly wellness stipend. Submit receipts to payroll by the fifth calendar day of the next month."}],
+      "expected_answer": "The stipend is $50 per month. Receipts are due to payroll by the fifth calendar day of the next month.",
+      "expected_citations": ["handbook:p3"]
+    },
+    {
+      "id": "handbook-parental-leave",
+      "question": "How long is parental leave, and when should HR be notified?",
+      "sources": [{"passage_id": "handbook:p4", "filename": "employee_handbook.test.txt", "page": 4, "content": "Eligible employees receive twelve weeks of parental leave. Notify Human Resources at least thirty calendar days before the planned leave when possible."}],
+      "expected_answer": "Eligible employees receive twelve weeks of parental leave and should notify HR at least thirty calendar days beforehand when possible.",
+      "expected_citations": ["handbook:p4"]
+    },
+    {
+      "id": "travel-booking-window",
+      "question": "How far ahead should domestic travel be booked?",
+      "sources": [{"passage_id": "travel:p1", "filename": "travel_policy.test.txt", "page": 1, "content": "Book domestic travel at least fourteen calendar days before departure. Standard bookings must use economy class."}],
+      "expected_answer": "Book at least fourteen calendar days before departure and use economy class.",
+      "expected_citations": ["travel:p1"]
+    },
+    {
+      "id": "travel-hotel-cap",
+      "question": "What is the standard nightly hotel limit?",
+      "sources": [{"passage_id": "travel:p2", "filename": "travel_policy.test.txt", "page": 2, "content": "The standard hotel limit is $220 per night before taxes. A higher rate requires written approval from the department director before booking."}],
+      "expected_answer": "The standard limit is $220 per night before taxes. Higher rates need prior written director approval.",
+      "expected_citations": ["travel:p2"]
+    },
+    {
+      "id": "travel-meal-allowance",
+      "question": "What daily meal allowance can I claim?",
+      "sources": [{"passage_id": "travel:p3", "filename": "travel_policy.test.txt", "page": 3, "content": "Employees traveling overnight may claim a meal allowance of up to $65 per travel day. Alcohol is not reimbursable."}],
+      "expected_answer": "The meal allowance is up to $65 per overnight travel day. Alcohol is not reimbursable.",
+      "expected_citations": ["travel:p3"]
+    },
+    {
+      "id": "travel-expense-deadline",
+      "question": "When must I submit a travel expense report, and which receipts are required?",
+      "sources": [{"passage_id": "travel:p4", "filename": "travel_policy.test.txt", "page": 4, "content": "Submit an itemized expense report within ten business days after returning. Attach receipts for individual expenses over $25."}],
+      "expected_answer": "Submit the itemized report within ten business days of returning and attach receipts for expenses over $25.",
+      "expected_citations": ["travel:p4"]
+    },
+    {
+      "id": "security-vpn-mfa",
+      "question": "What authentication is required for VPN access?",
+      "sources": [{"passage_id": "security:p1", "filename": "security_faq.test.txt", "page": 1, "content": "Multi-factor authentication is required for every VPN login. Use the company authenticator app or an approved hardware security key."}],
+      "expected_answer": "Every VPN login requires MFA through the company authenticator app or an approved hardware key.",
+      "expected_citations": ["security:p1"]
+    },
+    {
+      "id": "security-lost-device",
+      "question": "What should I do if a company device is lost?",
+      "sources": [{"passage_id": "security:p2", "filename": "security_faq.test.txt", "page": 2, "content": "Report a lost company device to IT within one hour. IT will revoke its access and initiate a remote lock or wipe."}],
+      "expected_answer": "Report it to IT within one hour so access can be revoked and the device remotely locked or wiped.",
+      "expected_citations": ["security:p2"]
+    },
+    {
+      "id": "security-password-policy",
+      "question": "What are the password length and reuse rules?",
+      "sources": [{"passage_id": "security:p3", "filename": "security_faq.test.txt", "page": 3, "content": "Passwords must be at least fourteen characters. Do not reuse any of your previous ten passwords."}],
+      "expected_answer": "Passwords must contain at least fourteen characters and cannot reuse any of the previous ten passwords.",
+      "expected_citations": ["security:p3"]
+    },
+    {
+      "id": "security-phishing-report",
+      "question": "How quickly should a suspected phishing message be reported?",
+      "sources": [{"passage_id": "security:p4", "filename": "security_faq.test.txt", "page": 4, "content": "Report suspected phishing to the Security team within thirty minutes using the Report Phishing button. Do not click links or open attachments."}],
+      "expected_answer": "Report it to Security within thirty minutes using the Report Phishing button; do not click links or open attachments.",
+      "expected_citations": ["security:p4"]
+    }
+  ]
+}
