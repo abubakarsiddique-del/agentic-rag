@@ -4,7 +4,9 @@ let csrfToken = null
 let csrfRequest = null
 
 function absoluteUrl(path) {
-  return `${API_BASE}/${path}`
+  api = `${API_BASE}/${path}`
+  console.log("API URL: ", api)
+  return api
 }
 
 function isUnsafe(method) {
