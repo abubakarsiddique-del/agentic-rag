@@ -102,10 +102,14 @@
 // NEXT_PUBLIC_API_BASE=https://your-backend-domain.com
 //
 // Do NOT include a trailing slash.
-const API_BASE = (
-  process.env.NEXT_PUBLIC_API_BASE ||
-  (typeof window !== 'undefined' ? window.location.origin : '')
-).replace(/\/+$/, '')
+// const API_BASE = (
+//   process.env.NEXT_PUBLIC_API_BASE ||
+//   (typeof window !== 'undefined' ? window.location.origin : '')
+// ).replace(/\/+$/, '')
+
+
+const API_BASE =
+  'https://agentic-rag-production-614c.up.railway.app'
 
 const CSRF_EXEMPT_PATHS = new Set([
   '/api/auth/signup',
