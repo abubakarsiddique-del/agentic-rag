@@ -1,8 +1,10 @@
 import os
 import sqlite3
+import warnings
 
 from types import SimpleNamespace
 
+import agentic_rag as agentic_module
 from agentic_rag import BaselineRAGService, RAGService
 from app_helpers import (
     SourcePreview,
@@ -23,6 +25,56 @@ def test_derive_auto_title_uses_answer_and_falls_back_to_question():
     answer = "The Australian Constitution is a codified document with federal and state powers, while India's Constitution is a longer, more detailed framework."
     assert derive_auto_title(question, answer, maximum=32) == "The Australian Constitution is a"
     assert derive_auto_title(question, "", maximum=50).startswith("Compare the Australian Constitution")
+
+
+def test_rag_service_initialization_defers_graph_and_checkpoint_import(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(agentic_module, "get_embedding_model", lambda: object())
+    monkeypatch.setattr(agentic_module, "get_logger", lambda *_args: object())
+    monkeypatch.setattr(agentic_module, "get_tracer", lambda *_args: object())
+    monkeypatch.setattr(
+        agentic_module,
+        "get_langfuse_handler",
+        lambda *_args, **_kwargs: object(),
+    )
+    monkeypatch.setattr(RAGService, "_attach_existing_index", lambda _self: None)
+
+    class FakeRunnable:
+        def __or__(self, _other):
+            return self
+
+    class FakePrompt:
+        def __or__(self, _other):
+            return FakeRunnable()
+
+    class FakeLLM:
+        def __init__(self, **kwargs):
+            self.callbacks = kwargs.get("callbacks")
+
+        def with_structured_output(self, _schema):
+            return FakeRunnable()
+
+    monkeypatch.setattr(agentic_module, "ChatGroq", FakeLLM)
+    monkeypatch.setattr(
+        agentic_module.ChatPromptTemplate,
+        "from_messages",
+        staticmethod(lambda _messages: FakePrompt()),
+    )
+
+    def unexpected_graph_build(_self):
+        raise AssertionError("graph construction must be deferred")
+
+    monkeypatch.setattr(RAGService, "_build_graph", unexpected_graph_build)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        service = RAGService()
+
+    assert service.graph is None
+    assert not any(
+        "allowed_objects" in str(warning.message)
+        for warning in caught
+    )
 
 
 def test_route_question_routes_direct_for_greetings(monkeypatch):
@@ -269,12 +321,14 @@ def test_agentic_graph_takes_map_reduce_path_for_broad_questions():
         "map_reduce_fallback": False,
         "trace": state["trace"] + [{"step": "map_reduce", "fallback": False}],
     }
-    service.graph = service._build_graph()
+    assert getattr(service, "graph", None) is None
 
     answer, documents = service.ask("Summarize the whole report", map_reduce_mode="auto")
 
     assert answer == "Document summary"
     assert documents == []
+    assert service.graph is not None
+    assert service.graph.checkpointer is None
     assert any(event["step"] == "map_reduce" for event in service.last_trace)
 
 

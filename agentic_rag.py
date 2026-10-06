@@ -24,7 +24,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langgraph.graph import END, StateGraph
 from pypdf import PdfReader
 
 from config import EMBEDDING_MODEL, GROQ_MODEL, NO_INFO_PHRASE
@@ -647,7 +646,7 @@ class RAGService:
         self.chunks = []
         self.last_trace: list[dict] = []
         self.last_reasoning: str = ""
-        self.graph = self._build_graph()
+        self.graph = None
         self._attach_existing_index()
 
     def _attach_existing_index(self) -> None:
@@ -673,6 +672,8 @@ class RAGService:
         )
 
     def _build_graph(self):
+        from langgraph.graph import END, StateGraph
+
         workflow = StateGraph(RAGState)
 
         workflow.add_node("scope_guard", self._scope_guard)
@@ -722,7 +723,7 @@ class RAGService:
         workflow.add_edge("direct_answer", END)
         workflow.add_edge("chitchat_answer", END)
 
-        return workflow.compile()
+        return workflow.compile(checkpointer=None)
 
     def _scope_guard(self, state: RAGState) -> dict:
         question = state.get("original_question") or state.get("question", "")
@@ -1502,7 +1503,11 @@ class RAGService:
             "passage_injection_blocked": False,
         }
 
-        final_state = self.graph.invoke(initial_state)
+        graph = getattr(self, "graph", None)
+        if graph is None:
+            graph = self._build_graph()
+            self.graph = graph
+        final_state = graph.invoke(initial_state)
         self.last_trace = [
             _validated_trace_record(item)
             for item in final_state.get("trace", [])

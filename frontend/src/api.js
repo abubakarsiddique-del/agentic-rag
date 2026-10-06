@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+const API_BASE = 'http://localhost:18005'
 const CSRF_EXEMPT_PATHS = new Set(['/api/auth/signup', '/api/auth/signin'])
 let csrfToken = null
 let csrfRequest = null
