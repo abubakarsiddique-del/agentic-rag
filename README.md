@@ -1,6 +1,6 @@
 # Agentic RAG: Document Q&A
 
-Agentic RAG answers questions using uploaded PDF and text files. This repository contains two user interfaces: a FastAPI API with a React/Vite chat frontend, and a separate Streamlit UI. They share the RAG engine and ingestion code but are separate application paths.
+Agentic RAG answers questions using uploaded PDF and text files. This repository contains two user interfaces: a FastAPI API with a React/Vite chat frontend, and a separate Streamlit UI. They share the RAG engine and Chroma Cloud collections but are separate application paths. SQLite stores application records; Chroma Cloud stores and searches document vectors.
 
 ## Quick Start
 
@@ -22,11 +22,13 @@ cd frontend
 npm install
 ```
 
-Set `GROQ_API_KEY` in the environment used to start the app. Do not commit credentials. The Streamlit entry points load the root `.env` file; FastAPI reads its process environment directly.
+Copy `.env.example` to `.env` at the repository root and set your Groq key and Chroma Cloud credentials. Get the Chroma API key from your Chroma Cloud SDK page; do not commit or paste it into source code. Both app entry points load the root `.env` file.
 
 ```bash
-export GROQ_API_KEY="<your Groq API key>"
+cp .env.example .env
 ```
+
+Set `CHROMA_HOST`, `CHROMA_TENANT`, and `CHROMA_DATABASE` to your Cloud SDK values. Set `CHROMA_API_KEY` locally; the key is required both to access Chroma Cloud and to call its Qwen/Splade embedding services.
 
 ### Run React and FastAPI
 
@@ -144,7 +146,9 @@ Question JSON requires `question`. Optional settings: `answer_mode` (`agentic` o
 | --- | --- |
 | `GROQ_API_KEY` | Required for Groq chat, Whisper, and PlayAI calls. |
 | `GROQ_MODEL` | Chat model; default `openai/gpt-oss-120b`. |
-| `EMBEDDING_MODEL` | Embedding model; default `sentence-transformers/all-MiniLM-L6-v2`. |
+| `CHROMA_HOST` | Chroma Cloud API host; default `api.trychroma.com`. |
+| `CHROMA_API_KEY` | Required Chroma Cloud key for database access and hosted embedding APIs. |
+| `CHROMA_TENANT`, `CHROMA_DATABASE` | Chroma Cloud tenant and database identifiers. |
 | `FRONTEND_ORIGIN` | Comma-separated exact CORS origins; default `http://localhost:5173`. Set to `http://localhost:5191` for the local ports above. Wildcard is rejected. |
 | `VITE_API_BASE_URL` | Optional API origin for direct cross-origin use; unset uses the Vite `/api` proxy. |
 | `APP_ENV` | Defaults to `development`; `production` forces Secure session cookies. |
@@ -177,7 +181,8 @@ npm test
 npm run build
 ```
 
-- `scripts/cleanup_conversations.py` lists what it would remove; pass `--apply` to delete conversations and their Chroma directories.
+- `scripts/migrate_chroma_cloud.py` copies each local index into a temporary directory and dry-runs a migration into Chroma Cloud. It needs temporary disk space for the local indexes. Run `./.venv/bin/python scripts/migrate_chroma_cloud.py --apply` to copy and re-embed records; the original local indexes are preserved.
+- `scripts/cleanup_conversations.py` lists what it would remove; pass `--apply` to delete conversations and their Chroma Cloud collections.
 - `scripts/cleanup_sessions.py` removes expired sessions, reset tokens, and pre-auth CSRF tokens. Expiry cleanup is not scheduled automatically.
 - `scripts/reassign_legacy_data.py --email <admin-email>` assigns ownerless legacy rows; back up `.rag_history.db` and `.chroma_store` first. It prompts unless `--yes` is supplied.
 - Evaluation entry points live under `eval/`; see [eval/README.md](eval/README.md). Do not treat fixture/stub scores as production model-quality results.
@@ -191,9 +196,9 @@ npm run build
 - **Upload limits:** API defaults are 10 files per request, 30 per conversation, 10 MiB per file/audio, and 50 MiB per document request. An error mentioning an unexpected file count may be due to setting `MAX_UPLOAD_FILES`, which does not control the FastAPI route.
 - **CORS/CSRF:** For a custom frontend origin, set `FRONTEND_ORIGIN` to the exact scheme/host/port. For direct API calls, set `VITE_API_BASE_URL` too. A `403` on a mutation usually means the CSRF token is absent/stale; use the shared frontend API client rather than raw fetch.
 - **401/404:** Sign in again after session expiry. Foreign or missing conversation/document IDs intentionally return 404. Legacy ownerless records are inaccessible until deliberately reassigned to an admin.
-- **Missing Chroma index:** If SQLite says a document is ready but its `.chroma_store/<conversation_id>` index is missing, the API marks it as needing re-upload/reprocessing.
+- **Missing Chroma index:** If SQLite says a document is ready but its conversation collection is empty in Chroma Cloud, the API marks it as needing re-upload/reprocessing. Confirm the Cloud credentials and run `scripts/migrate_chroma_cloud.py` to copy existing local indexes.
 - **Live judge failures:** Groundedness is fail-closed when its live Groq judge errors. Check API logs and Groq availability; a passing STUB evaluation does not exercise this request path.
 
 ## Security Notes
 
-Session cookies are `HttpOnly`, fixed-expiry after seven days, and host-only. Production must use HTTPS; configure the exact frontend origin. `.env` is gitignored: keep credentials out of source control and do not print them into logs or documentation.
+Session cookies are `HttpOnly`, fixed-expiry after seven days, and host-only. Production must use HTTPS; configure the exact frontend origin. Each conversation has its own Cloud collection; cross-session memory is stored in user-sharded Cloud collections. `.env` is gitignored: keep credentials out of source control and do not print them into logs or documentation.

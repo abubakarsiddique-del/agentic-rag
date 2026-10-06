@@ -545,14 +545,12 @@ def test_add_documents_appends_with_document_id_metadata(monkeypatch):
         def delete(self, **kwargs):
             self.deleted.append(kwargs)
 
-    class FakeSplitter:
-        def __init__(self, **kwargs):
-            pass
+    def split_documents(documents, **_kwargs):
+        for document in documents:
+            document.metadata["chunk_index"] = 1
+        return list(documents), [f"{document.metadata['document_id']}:1" for document in documents]
 
-        def split_documents(self, documents):
-            return list(documents)
-
-    monkeypatch.setattr("agentic_rag.RecursiveCharacterTextSplitter", FakeSplitter)
+    monkeypatch.setattr("agentic_rag.split_documents_for_cloud", split_documents)
     service = RAGService.__new__(RAGService)
     service.chunk_size = 800
     service.chunk_overlap = 100
@@ -762,35 +760,25 @@ def test_ask_with_reasoning_preserves_document_name_and_page_metadata(monkeypatc
 def test_build_index_replaces_stale_collection_for_same_conversation(monkeypatch):
     monkeypatch.setenv("GROQ_API_KEY", "test-key")
 
-    class FakeEmbeddings:
-        def embed_query(self, text):
-            return [0.1, 0.2, 0.3]
-
     class FakeVectorStore:
         def __init__(self):
             self.added = []
 
-        def add_documents(self, documents):
+        def add_documents(self, documents, *, ids=None):
             self.added.extend(documents)
 
         def as_retriever(self, **kwargs):
             return object()
 
-    class FakeSplitter:
-        def __init__(self, **kwargs):
-            self.kwargs = kwargs
-
-        def split_documents(self, docs):
-            return [doc for doc in docs]
-
     # tests now use the renamed, canonical loader; patch both names for safety
     monkeypatch.setattr("agentic_rag.load_uploaded_documents", lambda files: [SimpleNamespace(page_content="new text", metadata={"source": "new.pdf", "page": 1})])
     monkeypatch.setattr("agentic_rag.load_uploaded_dcouments", lambda files: [SimpleNamespace(page_content="new text", metadata={"source": "new.pdf", "page": 1})])
-    monkeypatch.setattr("agentic_rag.RecursiveCharacterTextSplitter", FakeSplitter)
-    monkeypatch.setattr("agentic_rag.get_embedding_model", lambda: FakeEmbeddings())
+    monkeypatch.setattr(
+        "agentic_rag.split_documents_for_cloud",
+        lambda docs, **kwargs: (list(docs), ["chunk-1"]),
+    )
     fake_store = FakeVectorStore()
-    monkeypatch.setattr("agentic_rag.Chroma", lambda **kwargs: fake_store)
-    monkeypatch.setattr("agentic_rag._create_isolated_chroma_client", lambda conversation_id: object())
+    monkeypatch.setattr("agentic_rag._create_conversation_vector_store", lambda conversation_id: fake_store)
 
     service = RAGService.__new__(RAGService)
     service.conversation_id = "same_conversation"
@@ -798,7 +786,6 @@ def test_build_index_replaces_stale_collection_for_same_conversation(monkeypatch
     service.chunk_overlap = 20
     service.top_k = 3
     service.max_retries = 2
-    service.embedding_model = FakeEmbeddings()
     service.llm = object()
     service.documents = []
     service.chunks = []

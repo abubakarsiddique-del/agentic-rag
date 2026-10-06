@@ -1,5 +1,3 @@
-import os
-import shutil
 from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 import pytest
@@ -46,40 +44,30 @@ def authenticated_backend(tmp_path, monkeypatch):
 
 
 def test_reattach_reuses_chroma(tmp_path, monkeypatch):
-    # Create conversation and monkeypatch RAGService.build_index to create a chroma dir
+    calls = []
+
+    class FakeService:
+        def has_documents(self):
+            return True
+
+    service = FakeService()
+
+    def ensure_service(conversation_id):
+        calls.append(conversation_id)
+        return service
+
+    monkeypatch.setattr(backend_module, "_ensure_service", ensure_service)
     with TestClient(app) as client:
         resp = client.post("/api/conversations")
         assert resp.status_code == 200
         conv = resp.json()["id"]
-
-        # Upload a dummy document to build the index (monkeypatching heavy operations)
-        class FakeUpload:
-            def __init__(self, name, content):
-                self.filename = name
-                self._content = content
-
-            async def read(self):
-                return self._content
-
-        # Use the real endpoint but simulate persistence by creating the .chroma_store/<conv> directory
-        # Ensure registry empty and simulate an existing chroma dir
         _SERVICE_REGISTRY.clear()
-        project_root = __import__('pathlib').Path(__file__).resolve().parent.parent
-        store_dir = project_root / ".chroma_store" / conv
-        store_dir.mkdir(parents=True, exist_ok=True)
-
-        # Now ensure that a new ensure_service will create a RAGService and reuse the dir
-        # by calling the backend endpoint that triggers ensure
         r = client.get(f"/api/conversations/{conv}/status")
         assert r.status_code == 200
         data = r.json()
         assert data.get("chroma_exists") is True
 
-        # Simulate backend restart by clearing registry and calling questions endpoint
         _SERVICE_REGISTRY.clear()
-        # The service should be re-created on demand; call status to trigger creation
         r2 = client.get(f"/api/conversations/{conv}/status")
         assert r2.status_code == 200
-
-        # Clean up
-        shutil.rmtree(store_dir)
+        assert calls == [conv, conv]

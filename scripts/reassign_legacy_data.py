@@ -4,35 +4,60 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from persistence.store import SQLiteConversationStore
 
 
 def _update_memory_vector_owners(store: SQLiteConversationStore, user_id: str) -> int:
-    memory_dir = Path(__file__).resolve().parent.parent / ".chroma_store" / "_memory"
-    if not (memory_dir / "chroma.sqlite3").is_file():
+    import chromadb
+    from langchain_core.documents import Document
+
+    from chroma_cloud import (
+        ChromaCloudVectorStore,
+        create_cloud_client,
+        get_or_create_collection,
+        memory_collection_name,
+    )
+
+    client = create_cloud_client()
+    try:
+        source = client.get_collection(name=memory_collection_name(None))
+    except chromadb.errors.NotFoundError:
         return 0
-
-    from agentic_rag import _create_isolated_chroma_client
-
-    collection = _create_isolated_chroma_client("_memory").get_collection(name="global_memory")
     turns = store.list_memory_turns(owner_id=user_id, limit=1_000_000)
     turn_ids = [turn.id for turn in turns]
     if not turn_ids:
         return 0
 
+    target = ChromaCloudVectorStore(
+        client,
+        get_or_create_collection(client, memory_collection_name(user_id)),
+        group_by_document=False,
+    )
     updated = 0
     for offset in range(0, len(turn_ids), 500):
-        result = collection.get(ids=turn_ids[offset : offset + 500], include=["metadatas"])
+        result = source.get(
+            ids=turn_ids[offset : offset + 500],
+            include=["documents", "metadatas"],
+        )
         ids = result.get("ids", [])
         metadatas = result.get("metadatas", [])
         if not ids:
             continue
-        collection.update(
-            ids=ids,
-            metadatas=[{**dict(metadata or {}), "user_id": user_id} for metadata in metadatas],
-        )
+        documents = [
+            Document(
+                page_content=str(text or ""),
+                metadata={**dict(metadata or {}), "user_id": user_id},
+            )
+            for text, metadata in zip(result.get("documents") or [], metadatas)
+        ]
+        target.upsert_documents(documents, ids=ids)
+        source.delete(ids=ids)
         updated += len(ids)
     return updated
 

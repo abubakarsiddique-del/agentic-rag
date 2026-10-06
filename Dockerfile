@@ -38,14 +38,12 @@ COPY eval/production/sampling.py ./eval/production/sampling.py
 COPY eval/production/sampling_store.py ./eval/production/sampling_store.py
 COPY guardrails/ ./guardrails/
 COPY persistence/ ./persistence/
-COPY agentic_rag.py app_helpers.py config.py ingest.py map_reduce.py observability.py reranking.py ./
+COPY agentic_rag.py app_helpers.py chroma_cloud.py config.py ingest.py map_reduce.py observability.py reranking.py ./
 
 RUN mkdir -p \
         /var/lib/agentic-rag/db \
-        /var/lib/agentic-rag/chroma \
         /home/app/.cache/huggingface \
     && ln -s /var/lib/agentic-rag/db/.rag_history.db /app/.rag_history.db \
-    && ln -s /var/lib/agentic-rag/chroma /app/.chroma_store \
     && chown -R app:app /app /var/lib/agentic-rag /home/app/.cache
 
 USER app:app

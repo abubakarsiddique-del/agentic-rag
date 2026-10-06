@@ -1,32 +1,37 @@
-"""Agentic RAG service with structured routing, guarded abstention, and local Chroma cleanup."""
+"""Agentic RAG service with structured routing, guarded abstention, and Chroma Cloud search."""
 
 from __future__ import annotations
 import io
 import os
 import re
-import shutil
 from contextlib import contextmanager
 from time import perf_counter
 from pathlib import Path
 from typing import Iterable, TypedDict
 
-import chromadb
-from chromadb.config import Settings as ChromaSettings
 from dotenv import load_dotenv
 from functools import lru_cache
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from chromadb.utils.embedding_functions import ChromaCloudQwenEmbeddingFunction
 from langchain_core.output_parsers import StrOutputParser
 from pydantic import BaseModel, ValidationError
 from typing import Literal
 import json
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
 
-from config import EMBEDDING_MODEL, GROQ_MODEL, NO_INFO_PHRASE
+from chroma_cloud import (
+    ChromaCloudVectorStore,
+    DENSE_EMBEDDING_DIMENSION,
+    DENSE_EMBEDDING_MODEL,
+    collection_name,
+    create_cloud_client,
+    get_dense_embedding_function,
+    get_or_create_collection,
+    split_documents_for_cloud,
+)
+from config import GROQ_MODEL, NO_INFO_PHRASE
 from ingest import load_uploaded_documents, load_uploaded_dcouments
 from map_reduce import MapReduceCancelled, MapReduceProcessor, classify_question_scope
 from persistence.memory import format_memory_hints
@@ -43,50 +48,42 @@ from observability import get_langfuse_handler, get_logger, get_tracer
 load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env", override=False)
 
 
-def _create_isolated_chroma_client(conversation_id: str = "default") -> chromadb.ClientAPI:
-    """Use a local persistent Chroma store for each conversation and clean it on rebuild."""
-    project_root = Path(__file__).resolve().parent
-    persist_dir = project_root / ".chroma_store" / str(conversation_id)
-    persist_dir.mkdir(parents=True, exist_ok=True)
-    settings = ChromaSettings(
-        chroma_api_impl="chromadb.api.segment.SegmentAPI",
-        is_persistent=True,
-        persist_directory=str(persist_dir),
-        chroma_server_host=None,
-        chroma_server_http_port=None,
-        anonymized_telemetry=False,
-        allow_reset=True,
-    )
-    return chromadb.PersistentClient(path=str(persist_dir), settings=settings)
+def _create_isolated_chroma_client(conversation_id: str = "default"):
+    """Return the configured Chroma Cloud client; data isolation is per collection."""
+    return create_cloud_client()
+
+
+def _create_conversation_vector_store(conversation_id: str) -> ChromaCloudVectorStore:
+    client = _create_isolated_chroma_client(conversation_id)
+    collection = get_or_create_collection(client, collection_name(str(conversation_id)))
+    return ChromaCloudVectorStore(client, collection)
 
 
 def tag_legacy_document_chunks(vector_store, document_id: str, filename: str) -> int:
     """Backfill document identity onto legacy chunks without recomputing embeddings."""
-    try:
-        result = vector_store.get(where={"source": filename}, include=["metadatas"])
-        ids = result.get("ids", [])
-        metadatas = result.get("metadatas", [])
-        if not ids:
-            return 0
-        updated = []
-        for metadata in metadatas:
-            value = dict(metadata or {})
-            value.update({"document_id": document_id, "source": filename, "document_name": filename})
-            updated.append(value)
-        vector_store.update(ids=ids, metadatas=updated)
-        return len(ids)
-    except Exception:
+    result = vector_store.get(where={"source": filename}, include=["metadatas"])
+    ids = result.get("ids", [])
+    metadatas = result.get("metadatas", [])
+    if not ids:
         return 0
+    updated = []
+    for index, metadata in enumerate(metadatas, start=1):
+        value = dict(metadata or {})
+        value.update({
+            "document_id": document_id,
+            "source_document_id": document_id,
+            "chunk_index": index,
+            "source": filename,
+            "document_name": filename,
+        })
+        updated.append(value)
+    vector_store.update(ids=ids, metadatas=updated)
+    return len(ids)
 
 
 @lru_cache(maxsize=1)
-def get_embedding_model() -> HuggingFaceEmbeddings:
-    print(f"Loading embedding model: {EMBEDDING_MODEL}")
-    return HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL,
-        model_kwargs={"device": "cpu"},
-        encode_kwargs={"normalize_embeddings": True},
-    )
+def get_embedding_model() -> ChromaCloudQwenEmbeddingFunction:
+    return get_dense_embedding_function()
 
 
 def _validate_file_size(file_bytes: bytes, file_name: str) -> None:
@@ -295,7 +292,7 @@ def _resolve_document_ids(
 
 
 def _search_selected_documents(
-    vector_store: Chroma,
+    vector_store: ChromaCloudVectorStore,
     query: str,
     top_k: int,
     document_ids: list[str],
@@ -369,7 +366,7 @@ def _rerank_passages(
 
 
 def _load_selected_passages(
-    vector_store: Chroma,
+    vector_store: ChromaCloudVectorStore,
     *,
     question: str,
     document_ids: list[str],
@@ -650,26 +647,15 @@ class RAGService:
         self._attach_existing_index()
 
     def _attach_existing_index(self) -> None:
-        persist_dir = Path(__file__).resolve().parent / ".chroma_store" / self.conversation_id
-        if not (persist_dir / "chroma.sqlite3").is_file():
-            return
+        self.vector_store = _create_conversation_vector_store(self.conversation_id)
+        if self.vector_store.count():
+            self.retriever = self.vector_store.as_retriever(
+                search_type="similarity",
+                search_kwargs={"k": self.top_k},
+            )
 
-        collection_name = f"conversation_{self.conversation_id}"
-        client = _create_isolated_chroma_client(self.conversation_id)
-        try:
-            client.get_collection(name=collection_name)
-        except Exception:
-            return
-
-        self.vector_store = Chroma(
-            collection_name=collection_name,
-            embedding_function=self.embedding_model,
-            client=client,
-        )
-        self.retriever = self.vector_store.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": self.top_k},
-        )
+    def has_documents(self) -> bool:
+        return self.vector_store is not None and self.vector_store.count() > 0
 
     def _build_graph(self):
         from langgraph.graph import END, StateGraph
@@ -1278,11 +1264,10 @@ class RAGService:
         }
 
     def cleanup_chroma_store(self) -> None:
-        persist_dir = Path(__file__).resolve().parent / ".chroma_store" / str(self.conversation_id)
-        if persist_dir.exists():
-            shutil.rmtree(persist_dir, ignore_errors=True)
         if self.vector_store is not None:
+            self.vector_store.delete_collection()
             self.vector_store = None
+        self.retriever = None
 
     def build_index(self, uploaded_files: Iterable) -> dict:
         self.cleanup_chroma_store()
@@ -1306,46 +1291,29 @@ class RAGService:
             # Expect upload-like objects; delegate to loader which will raise on errors
             self.documents = load_uploaded_documents(uploaded_files)
 
-        splitter = RecursiveCharacterTextSplitter(
+        self.chunks, chunk_ids = split_documents_for_cloud(
+            self.documents,
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap,
-            add_start_index=True,
         )
-        self.chunks = splitter.split_documents(self.documents)
 
         for index, chunk in enumerate(self.chunks, start=1):
             metadata = dict(getattr(chunk, "metadata", {}) or {})
             metadata["passage_id"] = f"passage-{index}"
             chunk.metadata = metadata
 
-        collection_name = f"conversation_{self.conversation_id}"
-        persist_dir = Path(__file__).resolve().parent / ".chroma_store" / str(self.conversation_id)
-        persist_dir.mkdir(parents=True, exist_ok=True)
-
-        chroma_client = _create_isolated_chroma_client(self.conversation_id)
-        try:
-            chroma_client.delete_collection(name=collection_name)
-        except Exception:
-            pass
-
-        self.vector_store = Chroma(
-            collection_name=collection_name,
-            embedding_function=self.embedding_model,
-            client=chroma_client,
-        )
-        self.vector_store.add_documents(documents=self.chunks)
+        self.vector_store = _create_conversation_vector_store(self.conversation_id)
+        self.vector_store.add_documents(self.chunks, ids=chunk_ids)
         self.retriever = self.vector_store.as_retriever(
             search_type="similarity",
             search_kwargs={"k": self.top_k},
         )
 
-        embedding_dimension = len(self.embedding_model.embed_query("dimension check"))
-
         return {
             "documents": len(self.documents),
             "chunks": len(self.chunks),
-            "embedding_dimension": embedding_dimension,
-            "embedding_model": EMBEDDING_MODEL,
+            "embedding_dimension": DENSE_EMBEDDING_DIMENSION,
+            "embedding_model": DENSE_EMBEDDING_MODEL,
             "llm_model": GROQ_MODEL,
         }
 
@@ -1358,38 +1326,28 @@ class RAGService:
     ) -> dict[str, int]:
         for document in documents:
             metadata = dict(getattr(document, "metadata", {}) or {})
-            metadata.update({"document_id": document_id, "source": filename, "document_name": filename})
-            document.metadata = metadata
-
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap,
-            add_start_index=True,
-        )
-        chunks = splitter.split_documents(documents)
-        for index, chunk in enumerate(chunks, start=1):
-            metadata = dict(getattr(chunk, "metadata", {}) or {})
             metadata.update({
                 "document_id": document_id,
+                "source_document_id": document_id,
                 "source": filename,
                 "document_name": filename,
-                "passage_id": f"{document_id}:{index}",
             })
-            chunk.metadata = metadata
+            document.metadata = metadata
+
+        chunks, chunk_ids = split_documents_for_cloud(
+            documents,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+        )
+        for chunk in chunks:
+            chunk.metadata["passage_id"] = (
+                f"{document_id}:{chunk.metadata['chunk_index']}"
+            )
 
         if self.vector_store is None:
-            persist_dir = Path(__file__).resolve().parent / ".chroma_store" / self.conversation_id
-            persist_dir.mkdir(parents=True, exist_ok=True)
-            self.vector_store = Chroma(
-                collection_name=f"conversation_{self.conversation_id}",
-                embedding_function=self.embedding_model,
-                client=_create_isolated_chroma_client(self.conversation_id),
-            )
+            self.vector_store = _create_conversation_vector_store(self.conversation_id)
         if chunks:
-            self.vector_store.add_documents(
-                documents=chunks,
-                ids=[f"{document_id}:{index}" for index in range(1, len(chunks) + 1)],
-            )
+            self.vector_store.add_documents(chunks, ids=chunk_ids)
         self.documents.extend(documents)
         self.chunks.extend(chunks)
         self.retriever = self.vector_store.as_retriever(
@@ -1968,30 +1926,19 @@ class BaselineRAGService:
         self._attach_existing_index()
 
     def _attach_existing_index(self) -> None:
-        persist_dir = Path(__file__).resolve().parent / ".chroma_store" / self.conversation_id
-        if not (persist_dir / "chroma.sqlite3").is_file():
-            return
+        self.vector_store = _create_conversation_vector_store(self.conversation_id)
+        if self.vector_store.count():
+            self.retriever = self.vector_store.as_retriever(
+                search_type="similarity",
+                search_kwargs={"k": self.top_k},
+            )
 
-        client = _create_isolated_chroma_client(self.conversation_id)
-        collection_name = f"conversation_{self.conversation_id}"
-        try:
-            client.get_collection(name=collection_name)
-        except Exception:
-            return
-        self.vector_store = Chroma(
-            collection_name=collection_name,
-            embedding_function=self.embedding_model,
-            client=client,
-        )
-        self.retriever = self.vector_store.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": self.top_k},
-        )
+    def has_documents(self) -> bool:
+        return self.vector_store is not None and self.vector_store.count() > 0
 
     def cleanup_chroma_store(self) -> None:
-        persist_dir = Path(__file__).resolve().parent / ".chroma_store" / self.conversation_id
-        if persist_dir.exists():
-            shutil.rmtree(persist_dir, ignore_errors=True)
+        if self.vector_store is not None:
+            self.vector_store.delete_collection()
         self.vector_store = None
         self.retriever = None
 
@@ -2005,41 +1952,26 @@ class BaselineRAGService:
 
         self.documents = docs
 
-        splitter = RecursiveCharacterTextSplitter(
+        self.chunks, chunk_ids = split_documents_for_cloud(
+            self.documents,
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap,
-            add_start_index=True,
         )
 
-        self.chunks = splitter.split_documents(self.documents)
-
-        collection_name = f"conversation_{self.conversation_id}"
-        chroma_client = _create_isolated_chroma_client(self.conversation_id)
-        try:
-            chroma_client.delete_collection(name=collection_name)
-        except Exception:
-            pass
-
-        self.vector_store = Chroma(
-            collection_name=collection_name,
-            embedding_function=self.embedding_model,
-            client=chroma_client,
-        )
-
-        self.vector_store.add_documents(documents=self.chunks)
+        self.cleanup_chroma_store()
+        self.vector_store = _create_conversation_vector_store(self.conversation_id)
+        self.vector_store.add_documents(self.chunks, ids=chunk_ids)
 
         self.retriever = self.vector_store.as_retriever(
             search_type="similarity",
             search_kwargs={"k": self.top_k},
         )
 
-        embedding_dimension = len(self.embedding_model.embed_query("dimension check"))
-
         return {
             "documents": len(self.documents),
             "chunks": len(self.chunks),
-            "embedding_dimension": embedding_dimension,
-            "embedding_model": EMBEDDING_MODEL,
+            "embedding_dimension": DENSE_EMBEDDING_DIMENSION,
+            "embedding_model": DENSE_EMBEDDING_MODEL,
             "llm_model": GROQ_MODEL,
         }
 
@@ -2052,36 +1984,26 @@ class BaselineRAGService:
     ) -> dict[str, int]:
         for document in documents:
             metadata = dict(getattr(document, "metadata", {}) or {})
-            metadata.update({"document_id": document_id, "source": filename, "document_name": filename})
-            document.metadata = metadata
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap,
-            add_start_index=True,
-        )
-        chunks = splitter.split_documents(documents)
-        for index, chunk in enumerate(chunks, start=1):
-            metadata = dict(getattr(chunk, "metadata", {}) or {})
             metadata.update({
                 "document_id": document_id,
+                "source_document_id": document_id,
                 "source": filename,
                 "document_name": filename,
-                "passage_id": f"{document_id}:{index}",
             })
-            chunk.metadata = metadata
+            document.metadata = metadata
+        chunks, chunk_ids = split_documents_for_cloud(
+            documents,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+        )
+        for chunk in chunks:
+            chunk.metadata["passage_id"] = (
+                f"{document_id}:{chunk.metadata['chunk_index']}"
+            )
         if self.vector_store is None:
-            persist_dir = Path(__file__).resolve().parent / ".chroma_store" / self.conversation_id
-            persist_dir.mkdir(parents=True, exist_ok=True)
-            self.vector_store = Chroma(
-                collection_name=f"conversation_{self.conversation_id}",
-                embedding_function=self.embedding_model,
-                client=_create_isolated_chroma_client(self.conversation_id),
-            )
+            self.vector_store = _create_conversation_vector_store(self.conversation_id)
         if chunks:
-            self.vector_store.add_documents(
-                documents=chunks,
-                ids=[f"{document_id}:{index}" for index in range(1, len(chunks) + 1)],
-            )
+            self.vector_store.add_documents(chunks, ids=chunk_ids)
         self.documents.extend(documents)
         self.chunks.extend(chunks)
         self.retriever = self.vector_store.as_retriever(

@@ -20,6 +20,7 @@ services:
       - ./guardrails:/app/guardrails:ro
       - ./persistence:/app/persistence:ro
       - ./agentic_rag.py:/app/agentic_rag.py:ro
+      - ./chroma_cloud.py:/app/chroma_cloud.py:ro
       - ./app_helpers.py:/app/app_helpers.py:ro
       - ./config.py:/app/config.py:ro
       - ./ingest.py:/app/ingest.py:ro

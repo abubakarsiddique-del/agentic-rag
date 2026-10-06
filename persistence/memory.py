@@ -1,4 +1,4 @@
-"""Global, low-trust cross-session memory backed by SQLite and isolated Chroma."""
+"""Global, low-trust cross-session memory backed by SQLite and user-sharded Chroma Cloud."""
 
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ class ConversationMemory:
     def __init__(self, store: SQLiteConversationStore, *, vector_store=None) -> None:
         self.store = store
         self._vector_store = vector_store
+        self._vector_stores: dict[str, object] = {}
         self._client = None
 
     def _get_client(self):
@@ -42,17 +43,25 @@ class ConversationMemory:
             self._client = _create_isolated_chroma_client("_memory")
         return self._client
 
-    def _get_vector_store(self):
-        if self._vector_store is None:
-            from agentic_rag import get_embedding_model
-            from langchain_chroma import Chroma
-
-            self._vector_store = Chroma(
-                collection_name="global_memory",
-                embedding_function=get_embedding_model(),
-                client=self._get_client(),
+    def _get_vector_store(self, owner_id: str | None = None):
+        if self._vector_store is not None:
+            return self._vector_store
+        key = owner_id or "legacy"
+        if key not in self._vector_stores:
+            from chroma_cloud import (
+                ChromaCloudVectorStore,
+                get_or_create_collection,
+                memory_collection_name,
             )
-        return self._vector_store
+
+            client = self._get_client()
+            collection = get_or_create_collection(client, memory_collection_name(owner_id))
+            self._vector_stores[key] = ChromaCloudVectorStore(
+                client,
+                collection,
+                group_by_document=False,
+            )
+        return self._vector_stores[key]
 
     def record_turn(
         self,
@@ -94,7 +103,7 @@ class ConversationMemory:
         if owner_id is not None:
             metadata["user_id"] = owner_id
         try:
-            self._get_vector_store().add_documents(
+            self._get_vector_store(owner_id).add_documents(
                 [Document(
                     page_content=f"Question: {turn.question}\nAnswer summary: {turn.summary}",
                     metadata=metadata,
@@ -120,7 +129,7 @@ class ConversationMemory:
             if owner_id is not None
             else None
         )
-        vector_store = self._get_vector_store()
+        vector_store = self._get_vector_store(owner_id)
         search_options = {"k": max(limit * 10, limit)}
         if owner_id is not None:
             search_options["filter"] = {"user_id": owner_id}
@@ -156,15 +165,13 @@ class ConversationMemory:
         return hits
 
     def delete_conversation(self, conversation_id: str) -> int:
+        conversation = self.store.get_conversation(conversation_id)
+        owner_id = conversation.user_id if conversation else None
         ids = self.store.delete_memory_turns(conversation_id)
         if not ids:
             return 0
         try:
-            if self._vector_store is not None:
-                self._vector_store.delete(where={"conversation_id": conversation_id})
-            else:
-                collection = self._get_client().get_collection(name="global_memory")
-                collection.delete(where={"conversation_id": conversation_id})
+            self._get_vector_store(owner_id).delete(where={"conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 - cleanup should continue with SQLite as source of truth
             logger.exception("Could not delete memory vectors for conversation %s", conversation_id)
         return len(ids)
@@ -174,26 +181,25 @@ class ConversationMemory:
         if owner_id is not None:
             if ids:
                 try:
-                    if self._vector_store is not None:
-                        self._vector_store.delete(ids=ids)
-                    else:
-                        self._get_client().get_collection(name="global_memory").delete(ids=ids)
+                    self._get_vector_store(owner_id).delete(ids=ids)
                 except Exception:  # noqa: BLE001 - SQLite remains the source of truth
                     logger.exception("Could not clear memory vectors for user %s", owner_id)
             return len(ids)
         try:
-            if self._client is not None:
-                self._client.delete_collection(name="global_memory")
-                self._vector_store = None
-            elif self._vector_store is not None and hasattr(self._vector_store, "clear"):
+            if self._vector_store is not None and hasattr(self._vector_store, "clear"):
                 self._vector_store.clear()
             elif self._vector_store is not None and ids:
                 self._vector_store.delete(ids=ids)
             else:
-                self._get_client().delete_collection(name="global_memory")
+                client = self._get_client()
+                for collection in client.list_collections():
+                    if collection.name.startswith("memory_"):
+                        client.delete_collection(name=collection.name)
+                self._vector_stores.clear()
         except Exception:  # noqa: BLE001 - do not fail settings actions on stale vectors
             logger.exception("Could not clear global memory vectors")
             self._vector_store = None
+            self._vector_stores.clear()
         return len(ids)
 
 

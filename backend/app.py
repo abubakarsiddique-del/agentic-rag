@@ -9,7 +9,6 @@ import logging
 import os
 import re
 import secrets
-import shutil
 import threading
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
@@ -27,6 +26,7 @@ from groq import Groq
 from persistence.models import Conversation, DocumentRecord, MessageRecord
 from persistence.memory import ConversationMemory, format_memory_hints
 from persistence.store import SQLiteConversationStore
+from chroma_cloud import delete_conversation_collection
 from app_helpers import format_conversation_export
 from backend.schemas import (
     AddPasswordRequest,
@@ -896,6 +896,15 @@ def _ensure_service(
     return svc
 
 
+def _service_has_documents(service: object | None) -> bool:
+    if service is None:
+        return False
+    has_documents = getattr(service, "has_documents", None)
+    if callable(has_documents):
+        return bool(has_documents())
+    return bool(getattr(service, "documents", None) or getattr(service, "chunks", None))
+
+
 class _ImmediateResponseService:
     def __init__(
         self,
@@ -979,9 +988,17 @@ def get_conversation(
     store = _get_store()
     conv = owned_conversation
     documents = store.list_document_records(conversation_id)
-    chroma_dir = PROJECT_ROOT / ".chroma_store" / conversation_id
-    has_chroma_index = (chroma_dir / "chroma.sqlite3").is_file()
-    if documents and not has_chroma_index:
+    ready_documents = [item for item in documents if item.status == "ready"]
+    if ready_documents:
+        service = _ensure_service(conversation_id)
+        has_chroma_index = _service_has_documents(service)
+        if has_chroma_index:
+            for document in ready_documents:
+                if document.sha256 is None and getattr(service, "vector_store", None) is not None:
+                    tag_legacy_document_chunks(service.vector_store, document.id, document.filename)
+    else:
+        has_chroma_index = False
+    if ready_documents and not has_chroma_index:
         for item in documents:
             if item.status == "ready":
                 store.update_document(
@@ -991,14 +1008,6 @@ def get_conversation(
                     error_message="Upload these files again to continue.",
                 )
         documents = store.list_document_records(conversation_id)
-    elif documents and has_chroma_index:
-        try:
-            service = _ensure_service(conversation_id)
-            for document in documents:
-                if document.sha256 is None and getattr(service, "vector_store", None) is not None:
-                    tag_legacy_document_chunks(service.vector_store, document.id, document.filename)
-        except Exception:
-            pass
     return ConversationDetail(
         id=conv.id,
         title=conv.title,
@@ -1180,8 +1189,9 @@ def list_documents(
     store = _get_store()
     _ = owned_conversation
     records = store.list_document_records(conversation_id)
-    chroma_dir = PROJECT_ROOT / ".chroma_store" / conversation_id
-    if records and not (chroma_dir / "chroma.sqlite3").is_file():
+    ready_records = [item for item in records if item.status == "ready"]
+    has_chroma_index = _service_has_documents(_ensure_service(conversation_id)) if ready_records else True
+    if ready_records and not has_chroma_index:
         for document in records:
             if document.status == "ready":
                 store.update_document(
@@ -1203,11 +1213,8 @@ def delete_document(
     store = _get_store()
     document_id = document.id
     service = _SERVICE_REGISTRY.get(conversation_id)
-    if service is None and (PROJECT_ROOT / ".chroma_store" / conversation_id).exists():
-        try:
-            service = _ensure_service(conversation_id)
-        except Exception:
-            service = None
+    if service is None and document.status == "ready":
+        service = _ensure_service(conversation_id)
     with _conversation_lock(conversation_id):
         if service is not None and getattr(service, "vector_store", None) is not None:
             if document.sha256 is None:
@@ -1737,15 +1744,15 @@ def conversation_status(
     svc = _SERVICE_REGISTRY.get(conversation_id)
     # Attempt to reattach to existing persisted Chroma store if no live service
     if svc is None:
-        try:
-            svc = _ensure_service(conversation_id)
-        except Exception:
-            svc = None
-    chroma_dir = PROJECT_ROOT / ".chroma_store" / conversation_id
-    exists = chroma_dir.exists()
+        svc = _ensure_service(conversation_id)
     has_service = svc is not None
-    has_docs = bool(getattr(svc, "documents", None)) if svc is not None else False
-    return {"conversation_id": conversation_id, "chroma_exists": exists, "service_loaded": has_service, "has_documents": has_docs}
+    has_docs = _service_has_documents(svc)
+    return {
+        "conversation_id": conversation_id,
+        "chroma_exists": has_docs,
+        "service_loaded": has_service,
+        "has_documents": has_docs,
+    }
 
 
 @app.delete("/api/conversations/{conversation_id}")
@@ -1761,9 +1768,8 @@ def delete_conversation(
     svc = _SERVICE_REGISTRY.pop(conversation_id, None)
     if svc is not None and hasattr(svc, "cleanup_chroma_store"):
         svc.cleanup_chroma_store()
-    chroma_dir = PROJECT_ROOT / ".chroma_store" / conversation_id
-    if chroma_dir.exists():
-        shutil.rmtree(chroma_dir, ignore_errors=True)
+    else:
+        delete_conversation_collection(conversation_id)
 
     deleted = store.delete_conversation(conversation_id)
     return {"deleted": bool(deleted)}

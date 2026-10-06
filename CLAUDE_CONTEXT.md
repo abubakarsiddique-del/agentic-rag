@@ -16,13 +16,13 @@ Read the owning code before changing behavior. This is a two-frontend Python pro
 - React/Vite: `cd frontend && npm run dev`; Vite proxies `/api` to `http://localhost:8000`. `npm test` runs Vitest; `npm run build` builds production assets. `package-lock.json` is checked in.
 - Unified Streamlit UI: `streamlit run app.py` from repository root. `agentic_app.py` is a legacy Streamlit entry point.
 - Python tests: `./.venv/bin/python -m pytest -q` from repository root. `requirements-dev.txt` declares `pytest` and `mocker`.
-- Streamlit entry points call `load_dotenv`; FastAPI reads environment variables directly. Set `GROQ_API_KEY` in the API process environment.
+- Streamlit and FastAPI load root `.env`; set `GROQ_API_KEY` and `CHROMA_HOST`, `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`.
 
 ### 2. Persistence
 - `persistence/store.py` initializes `.rag_history.db` and applies schema migrations 1-7.
 - Tables: `conversations`, `messages`, `indexed_documents`, `documents`, `schema_migrations`, `app_settings`, `conversation_memory_settings`, `memory_turns`, `users`, `sessions`, `user_settings`, `preauth_csrf_tokens`, and `password_reset_tokens`.
 - Ownership fields are nullable on legacy conversation/document/index/memory rows; auth migrations add user-scoped settings and token tables. `persistence/models.py` defines the record dataclasses.
-- Conversation document vectors live under `.chroma_store/<conversation_id>`; global memory uses `.chroma_store/_memory`.
+- Conversation document vectors live in per-conversation Chroma Cloud collections; memory vectors live in per-user Cloud collections. SQLite remains the application-record store.
 - Production sampling uses a separate SQLite `evaluation_results` table (`eval/production/sampling_store.py`).
 
 ### 3. Core Engine
@@ -44,7 +44,7 @@ Read the owning code before changing behavior. This is a two-frontend Python pro
 - `map_progress` payload: `{stage, mapped, total, document}`. Rerank trace fields include candidate/kept counts, score, latency, enabled, and fallback.
 
 ### 6. Cross-Session Memory
-- `persistence/memory.py` stores a shortened answer summary and question in SQLite and indexes them in Chroma collection `global_memory`.
+- `persistence/memory.py` stores a shortened answer summary and question in SQLite and indexes them in per-user Chroma Cloud collections.
 - Global memory is per-user and defaults off. Per-conversation memory defaults on but is only active with global memory enabled. Search excludes the current conversation and filters results by owner.
 - Hints are explicitly untrusted and can clarify references only; they are not answer evidence/citations. Completed non-fast-path answers are recorded in the API finish callback.
 - Routes: `GET/PUT /api/memory/settings`, `DELETE /api/memory`, and `GET/PUT /api/conversations/{conversation_id}/memory`.
@@ -91,7 +91,7 @@ Read the owning code before changing behavior. This is a two-frontend Python pro
 - Python tests: `tests/test_agentic_rag.py`, plus `tests/test_api.py`, `test_auth.py`, `test_chitchat.py`, `test_eval_regression.py`, `test_feedback_report.py`, guardrail, map-reduce, memory, production-eval, reattach, reranking, and voice cleanup tests.
 - Frontend test files currently cover `api.js` and `conversationUtils.mjs`; there are no App/InputBar/browser playback tests.
 - Ops: `scripts/cleanup_conversations.py` dry-runs unless `--apply`; `cleanup_sessions.py` deletes expired auth tokens; `reassign_legacy_data.py` requires an existing admin and confirmation unless `--yes`. Evaluation utilities live under `eval/`.
-- Relevant env: `GROQ_API_KEY`, `GROQ_MODEL`, `EMBEDDING_MODEL`, `FRONTEND_ORIGIN`, `APP_ENV`, `RAG_COOKIE_SECURE`, `RAG_COOKIE_SAMESITE`, `RAG_ADMIN_EMAILS`, `MAX_FILES_PER_UPLOAD`, `MAX_FILES_PER_CONVERSATION`, `MAX_REQUEST_BYTES`, `MAX_UPLOAD_BYTES`, `RERANKER_MODEL`, `RERANKER_BATCH_SIZE`, `MAP_REDUCE_TOKENIZER`, `MAP_REDUCE_TOKEN_BUDGET`, `MAP_REDUCE_MAX_CALLS`, `MAP_REDUCE_CONCURRENCY`, `MAP_REDUCE_MAX_RETRIES`, `RAG_EVAL_SAMPLE_RATE`, `PIPELINE_EVAL_*`, `GOLDEN_EVAL_MIN_*`, `RAG_GUARDRAIL_*`, and frontend `VITE_API_BASE_URL`.
+- Relevant env: `GROQ_API_KEY`, `GROQ_MODEL`, `CHROMA_HOST`, `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`, `FRONTEND_ORIGIN`, `APP_ENV`, `RAG_COOKIE_SECURE`, `RAG_COOKIE_SAMESITE`, `RAG_ADMIN_EMAILS`, `MAX_FILES_PER_UPLOAD`, `MAX_FILES_PER_CONVERSATION`, `MAX_REQUEST_BYTES`, `MAX_UPLOAD_BYTES`, `RERANKER_MODEL`, `RERANKER_BATCH_SIZE`, `MAP_REDUCE_TOKENIZER`, `MAP_REDUCE_TOKEN_BUDGET`, `MAP_REDUCE_MAX_CALLS`, `MAP_REDUCE_CONCURRENCY`, `MAP_REDUCE_MAX_RETRIES`, `RAG_EVAL_SAMPLE_RATE`, `PIPELINE_EVAL_*`, `GOLDEN_EVAL_MIN_*`, `RAG_GUARDRAIL_*`, and frontend `VITE_API_BASE_URL`.
 - `config.MAX_UPLOAD_FILES` is defined but unused; FastAPI upload enforcement uses `MAX_FILES_PER_UPLOAD` instead. Do not imply the former controls API uploads.
 - `.env` is gitignored. Do not read or print secrets while inspecting the workspace.
 

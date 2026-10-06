@@ -158,11 +158,8 @@ def is_chat_ready() -> bool:
 def reset_session() -> None:
     # Call RAGService cleanup hooks before wiping session state
     service = st.session_state.get("rag_service")
-    try:
-        if service is not None and hasattr(service, "cleanup_chroma_store"):
-            service.cleanup_chroma_store()
-    except Exception:
-        pass
+    if service is not None and hasattr(service, "cleanup_chroma_store"):
+        service.cleanup_chroma_store()
 
     for key, value in SESSION_DEFAULTS.items():
         st.session_state[key] = value.copy() if isinstance(value, dict) else value

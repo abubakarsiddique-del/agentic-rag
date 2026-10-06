@@ -124,6 +124,7 @@ def test_memory_api_hints_record_opt_out_and_clear(tmp_path, monkeypatch):
     vectors = MemoryVectors()
     memory = ConversationMemory(store, vector_store=vectors)
     monkeypatch.setattr(backend_module, "_MEMORY_MANAGER", memory)
+    monkeypatch.setattr(backend_module, "delete_conversation_collection", lambda _conversation_id: None)
     with TestClient(app) as client:
         global_setting = client.put("/api/memory/settings", json={"enabled": True})
     assert global_setting.json() == {"enabled": True}
@@ -190,8 +191,14 @@ def test_memory_api_hints_record_opt_out_and_clear(tmp_path, monkeypatch):
         assert client.get("/api/memory/settings").json() == {"enabled": True}
 
 
-def test_conversation_lifecycle(tmp_path):
+def test_conversation_lifecycle(tmp_path, monkeypatch):
     store = SQLiteConversationStore(db_path=tmp_path / "test.db")
+    monkeypatch.setattr(
+        backend_module,
+        "_ensure_service",
+        lambda *_args, **_kwargs: type("EmptyService", (), {"has_documents": lambda self: False})(),
+    )
+    monkeypatch.setattr(backend_module, "delete_conversation_collection", lambda _conversation_id: None)
 
     with TestClient(app) as client:
         r = client.post("/api/conversations")
@@ -292,6 +299,7 @@ def test_sse_question_and_cancel(monkeypatch):
         svc = DummyService()
         svc.conversation_id = conv
         _SERVICE_REGISTRY[conv] = svc
+        monkeypatch.setattr(backend_module, "_ensure_service", lambda *_args, **_kwargs: svc)
         backend_module._get_store().create_document(DocumentRecord(
             id="00000000-0000-0000-0000-000000000001",
             conversation_id=conv,
@@ -620,9 +628,6 @@ def test_upload_then_question_emits_structured_trace(monkeypatch, tmp_path):
         def add_documents(self, docs, *, document_id, filename):
             self.documents = docs
             self.chunks = list(docs)
-            index_dir = backend_module.PROJECT_ROOT / ".chroma_store" / self.conversation_id
-            index_dir.mkdir(parents=True, exist_ok=True)
-            (index_dir / "chroma.sqlite3").touch()
             return {"pages": len(docs), "chunks": len(docs)}
 
         def ask_stream(self, question, cancel_event=None, on_trace=None):
@@ -822,13 +827,15 @@ def test_multi_upload_isolates_bad_pdf_and_later_upload_appends(monkeypatch, tmp
             self.conversation_id = conversation_id
             self.vector_store = FakeVectorStore()
             self.added = []
+            self.documents = []
 
         def add_documents(self, docs, *, document_id, filename):
             self.added.append((document_id, filename, list(docs)))
-            index_dir = tmp_path / ".chroma_store" / self.conversation_id
-            index_dir.mkdir(parents=True, exist_ok=True)
-            (index_dir / "chroma.sqlite3").touch()
+            self.documents.extend(docs)
             return {"pages": len(docs), "chunks": len(docs)}
+
+        def has_documents(self):
+            return bool(self.documents)
 
         def delete_document(self, document_id, filename=None):
             self.vector_store.delete(where={"document_id": document_id})
@@ -839,7 +846,6 @@ def test_multi_upload_isolates_bad_pdf_and_later_upload_appends(monkeypatch, tmp
     writer.write(image_only_pdf)
     service_holder = {}
 
-    monkeypatch.setattr(backend_module, "PROJECT_ROOT", tmp_path)
     def fake_ensure_service(conversation_id, answer_mode="agentic", passages_per_search=4):
         service = service_holder.setdefault(conversation_id, FakeService(conversation_id))
         _SERVICE_REGISTRY[conversation_id] = service
@@ -903,17 +909,27 @@ def test_conversation_restore_reattaches_legacy_index_or_marks_reprocessing(monk
         def __init__(self):
             self.vector_store = FakeVectorStore()
 
+        def has_documents(self):
+            return True
+
     service = FakeService()
     calls = []
-    monkeypatch.setattr(backend_module, "PROJECT_ROOT", tmp_path)
-    monkeypatch.setattr(backend_module, "_ensure_service", lambda conversation_id: calls.append(conversation_id) or service)
+    missing_service = type("EmptyService", (), {
+        "vector_store": None,
+        "has_documents": lambda self: False,
+    })()
+    services = {}
+
+    def fake_ensure_service(conversation_id):
+        calls.append(conversation_id)
+        return services.get(conversation_id, missing_service)
+
+    monkeypatch.setattr(backend_module, "_ensure_service", fake_ensure_service)
 
     with TestClient(app) as client:
         store = backend_module._get_store()
         existing = client.post("/api/conversations").json()
-        existing_path = tmp_path / ".chroma_store" / existing["id"]
-        existing_path.mkdir(parents=True)
-        (existing_path / "chroma.sqlite3").touch()
+        services[existing["id"]] = service
         store.create_document(DocumentRecord(
             id="00000000-0000-0000-0000-000000000031",
             conversation_id=existing["id"],
@@ -948,7 +964,7 @@ def test_conversation_restore_reattaches_legacy_index_or_marks_reprocessing(monk
         ))
         missing_detail = client.get(f"/api/conversations/{missing['id']}").json()
 
-    assert calls == [existing["id"]]
+    assert calls == [existing["id"], missing["id"]]
     assert missing_detail["documents"][0]["status"] == "failed"
     assert missing_detail["documents"][0]["error_code"] == "needs_reprocessing"
     assert "upload these files again" in missing_detail["documents"][0]["error_message"].lower()
@@ -1294,4 +1310,3 @@ def test_voice_transcribe_rejects_invalid_audio(filename, content_type, body, st
         )
 
     assert response.status_code == status_code
-

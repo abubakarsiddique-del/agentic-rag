@@ -12,8 +12,7 @@ bcrypt==5.0.0
 build==1.6.1
 certifi==2026.7.22
 charset-normalizer==3.5.1
-chroma-hnswlib==0.7.6
-chromadb==0.6.3
+chromadb==1.5.9
 click==8.5.0
 cloudpickle==3.1.2
 coloredlogs==15.0.1
@@ -43,10 +42,8 @@ joblib==1.6.0
 jsonpatch==1.33
 jsonpointer==3.1.1
 kubernetes==36.0.3
-langchain-chroma==0.2.3
 langchain-core==0.3.86
 langchain-groq==0.3.8
-langchain-huggingface==0.3.1
 langchain-text-splitters==0.3.11
 langsmith==0.13.0
 markdown-it-py==4.2.0

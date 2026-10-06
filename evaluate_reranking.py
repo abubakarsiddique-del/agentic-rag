@@ -6,9 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from langchain_chroma import Chroma
-
-from agentic_rag import _create_isolated_chroma_client, get_embedding_model
+from agentic_rag import _create_conversation_vector_store
 from reranking import rerank_documents
 
 
@@ -48,12 +46,7 @@ def main() -> int:
     if not isinstance(pairs, list) or not pairs:
         parser.error("pairs JSON must be a non-empty list")
 
-    client = _create_isolated_chroma_client(args.conversation_id)
-    vector_store = Chroma(
-        collection_name=f"conversation_{args.conversation_id}",
-        embedding_function=get_embedding_model(),
-        client=client,
-    )
+    vector_store = _create_conversation_vector_store(args.conversation_id)
     totals = {"vector": [0.0, 0.0], "reranked": [0.0, 0.0]}
     for row in pairs:
         question = str(row["question"])

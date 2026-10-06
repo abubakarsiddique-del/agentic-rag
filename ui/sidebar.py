@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import shutil
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -19,6 +17,7 @@ from app_helpers import (
     partition_uploaded_files,
     selection_differs_from_processed,
 )
+from chroma_cloud import delete_conversation_collection
 from ui.state import (
     advanced_settings_changed,
     get_active_conversation_id,
@@ -215,11 +214,9 @@ def render_conversation_history() -> None:
                 st.rerun()
         with cols[1]:
             if st.button("🗑", key=f"delete_{conv.id}", use_container_width=True):
+                delete_conversation_collection(conv.id)
                 deleted = store.delete_conversation(conv.id)
                 if deleted:
-                    chroma_dir = Path(__file__).resolve().parent.parent / ".chroma_store" / conv.id
-                    if chroma_dir.exists():
-                        shutil.rmtree(chroma_dir, ignore_errors=True)
                     current_id = st.session_state.get("active_conversation_id")
                     if current_id == conv.id:
                         remaining = store.list_conversations()
