@@ -3,11 +3,6 @@ const CSRF_EXEMPT_PATHS = new Set(['/api/auth/signup', '/api/auth/signin'])
 let csrfToken = null
 let csrfRequest = null
 
-function absoluteUrl(path) {
-  const api = `${API_BASE}/${path}`
-  console.log("API URL: ", api)
-  return api
-}
 
 function isUnsafe(method) {
   return !['GET', 'HEAD', 'OPTIONS'].includes(String(method || 'GET').toUpperCase())
@@ -31,7 +26,7 @@ function notifyUnauthorized(path) {
 async function getCsrfToken() {
   if (csrfToken) return csrfToken
   if (!csrfRequest) {
-    csrfRequest = fetch(absoluteUrl('/api/auth/csrf'), {credentials: 'include'})
+    csrfRequest = fetch(`${API_BASE}/api/auth/csrf`, {credentials: 'include'})
       .then(async response => {
         if (!response.ok) throw new Error('Could not prepare a secure request.')
         const payload = await response.json()
@@ -54,7 +49,7 @@ export async function apiFetch(path, init = {}) {
   if (needsCsrf(path, method) && !CSRF_EXEMPT_PATHS.has(path)) {
     headers.set('X-CSRF-Token', await getCsrfToken())
   }
-  const response = await fetch(absoluteUrl(path), {
+  const response = await fetch(`${API_BASE}/${path}`, {
     ...init,
     method,
     headers,
@@ -73,7 +68,7 @@ export async function apiUpload(path, form, onProgress) {
   const token = await getCsrfToken()
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest()
-    request.open('POST', absoluteUrl(path))
+    request.open('POST', `${API_BASE}/${path}`)
     request.withCredentials = true
     request.setRequestHeader('X-CSRF-Token', token)
     request.upload.addEventListener('progress', event => {
